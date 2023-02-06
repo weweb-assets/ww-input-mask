@@ -1,46 +1,27 @@
 <template>
     <div class="ww-input-basic" :class="{ editing: isEditing }">
         <input
-            v-if="content.type !== 'textarea'"
             ref="input"
             v-bind="$attrs"
+            :key="componentKey"
             :value="value"
+            v-imask="maskOptions"
             class="ww-input-basic__input"
             :class="{
                 editing: isEditing,
-                hideArrows: content.hideArrows && inputType === 'number',
                 'date-placeholder': content.type === 'date' && !value,
             }"
-            :type="inputType"
+            type="text"
             :name="wwElementState.name"
             :readonly="content.readonly"
             :required="content.required"
             :placeholder="isAdvancedPlaceholder ? '' : wwLang.getText(content.placeholder)"
             :style="style"
-            :min="content.min"
-            :max="content.max"
-            :step="step"
             @input="handleManualInput($event)"
-            @blur="onBlur($event)"
-            @focus="isFocused = true"
-        />
-        <textarea
-            v-else
-            ref="input"
-            v-bind="$attrs"
-            :value="value"
-            class="ww-input-basic__input"
-            :class="{ editing: isEditing }"
-            :type="content.type"
-            :name="wwElementState.name"
-            :readonly="content.readonly"
-            :required="content.required"
-            :placeholder="isAdvancedPlaceholder ? '' : wwLang.getText(content.placeholder)"
-            :style="[style, { resize: content.resize ? '' : 'none' }]"
-            :rows="content.rows"
-            @input="handleManualInput($event)"
-            @focus="isFocused = true"
             @blur="isFocused = false"
+            @focus="isFocused = true"
+            @accept="onAccept"
+            @complete="onComplete"
         />
         <div
             v-if="isAdvancedPlaceholder"
@@ -62,6 +43,7 @@
 
 <script>
 import { computed, ref } from 'vue';
+import { IMaskDirective } from 'vue-imask';
 
 export default {
     inheritAttrs: false,
@@ -75,6 +57,9 @@ export default {
         wwElementState: { type: Object, required: true },
     },
     emits: ['trigger-event', 'add-state', 'remove-state', 'update:content:effect'],
+    directives: {
+        imask: IMaskDirective,
+    },
     setup(props) {
         const type = computed(() => {
             if (Object.keys(props.wwElementState.props).includes('type')) {
@@ -85,25 +70,16 @@ export default {
         const step = computed(() => {
             return type.value === 'decimal' ? props.content.precision : '1';
         });
-        function formatValue(value) {
-            if (type.value !== 'decimal') return value;
-            if (!value && value !== 0) return '';
-            value = `${value}`.replace(',', '.');
-            const length = value.indexOf('.') !== -1 ? step.value.split('.')[1].length : 0;
-            const newValue = parseFloat(Number(value).toFixed(length).replace(',', '.'));
-            return newValue;
-        }
-
         const { value: variableValue, setValue } = wwLib.wwVariable.useComponentVariable({
             uid: props.uid,
             name: 'value',
             type: computed(() => (['decimal', 'number'].includes(type.value) ? 'number' : 'string')),
-            defaultValue: props.content.value === undefined ? '' : formatValue(props.content.value),
+            defaultValue: props.content.value === undefined ? '' : props.content.value,
         });
 
         const inputRef = ref('input');
 
-        return { variableValue, setValue, formatValue, step, type, inputRef };
+        return { variableValue, setValue, step, type, inputRef };
     },
     data() {
         return {
@@ -116,6 +92,11 @@ export default {
             noTransition: false,
             isMounted: false,
             isDebouncing: false,
+            componentKey: 0,
+            mask: {
+                state: null,
+                event: null,
+            },
         };
     },
     computed: {
@@ -179,7 +160,7 @@ export default {
             if (this.content.type === 'password') {
                 return this.content.displayPassword ? 'text' : 'password';
             }
-            return this.content.type === 'decimal' ? 'number' : this.content.type;
+            return this.content.type;
         },
         isReadonly() {
             /* wwEditor:start */
@@ -194,10 +175,16 @@ export default {
         isAdvancedPlaceholder() {
             return this.content.advancedPlaceholder && !this.isReadonly;
         },
+        maskOptions() {
+            return {
+                mask: this.content.maskType === 'pattern' ? this.content.pattern : new RegExp(this.content.regexp),
+                lazy: !this.content.placeholderVisible,
+                placeholderChar: this.content.placeholderChar,
+            };
+        },
     },
     watch: {
         'content.value'(newValue) {
-            if (this.type === 'decimal') newValue = this.formatValue(newValue);
             if (newValue === this.value) return;
             this.setValue(newValue);
             this.$emit('trigger-event', { name: 'initValueChange', event: { value: newValue } });
@@ -216,13 +203,6 @@ export default {
                 });
             },
         },
-        /* wwEditor:start */
-        'content.precision'(newValue, OldValue) {
-            if (newValue === OldValue) return;
-            const value = this.formatValue(this.value);
-            this.setValue(value);
-        },
-        /* wwEditor:end */
         'content.type'() {
             this.$nextTick(() => {
                 this.handleObserver();
@@ -259,6 +239,11 @@ export default {
                 /* wwEditor:end */
             },
         },
+        /* wwEditor:start */
+        maskOptions() {
+            this.initMask();
+        },
+        /* wwEditor:end */
     },
     beforeUnmount() {
         if (this.resizeObserverContent) this.resizeObserverContent.disconnect();
@@ -267,27 +252,22 @@ export default {
         wwLib.getFrontDocument().removeEventListener('keyup', this.onKeyEnter);
     },
     mounted() {
+        this.initMask();
         this.isMounted = true;
         this.handleObserver();
-
         wwLib.getFrontDocument().addEventListener('keyup', this.onKeyEnter);
     },
     methods: {
         handleManualInput(event) {
             const value = event.target.value;
             let newValue;
-            if (this.inputType === 'number' && value.length) {
-                try {
-                    newValue = parseFloat(value);
-                } catch (error) {
-                    newValue = value;
-                }
-            } else {
-                newValue = value;
-            }
+            newValue = value;
 
             if (newValue === this.value) return;
             this.setValue(newValue);
+
+            this.handleMaskEvents(event);
+
             if (this.content.debounce) {
                 this.isDebouncing = true;
                 if (this.debounce) {
@@ -307,19 +287,6 @@ export default {
         onKeyEnter(event) {
             if (event.key === 'Enter' && this.isFocused)
                 this.$emit('trigger-event', { name: 'onEnterKey', event: { value: this.value } });
-        },
-        onBlur(event) {
-            this.correctDecimalValue(event);
-            this.isFocused = false;
-        },
-        correctDecimalValue(event) {
-            if (this.content.type === 'decimal') {
-                const newValue = this.formatValue(this.value);
-
-                if (newValue === this.value) return;
-                this.setValue(newValue);
-                this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value: newValue } });
-            }
         },
         handleObserver() {
             if (!this.isMounted) return;
@@ -350,6 +317,44 @@ export default {
             setTimeout(() => {
                 this.noTransition = false;
             }, wwLib.wwUtils.getLengthUnit(this.content.transition)[0]);
+        },
+        initMask() {
+            if (!this.$refs.input || !this.maskOptions.mask) return;
+
+            this.setValue('');
+            this.componentKey += 1;
+            this.$nextTick(() => {
+                this.maskInstance = IMask(this.$refs.input, this.maskOptions);
+                console.log(this.maskOptions, this.maskInstance);
+            });
+        },
+        onAccept(event) {
+            this.mask.state = 'accept';
+            this.mask.event = event.detail;
+        },
+        onComplete(event) {
+            this.mask.state = 'complete';
+            this.mask.event = event.detail;
+        },
+        handleMaskEvents(event) {
+            this.$nextTick(() => {
+                if (this.mask.state === 'accept') {
+                    console.log('accept');
+                    this.$emit('trigger-event', { name: 'maskAccept', event: { value: this.mask.event } });
+                    this.mask.state = null;
+                } else if (this.mask.state === 'complete') {
+                    console.log('complete');
+                    this.$emit('trigger-event', { name: 'maskComplete', event: { value: this.mask.event } });
+                    this.mask.state = null;
+                } else if (!this.mask.state) {
+                    console.log('reject');
+                    this.$emit('trigger-event', {
+                        name: 'maskReject',
+                        event: { value: { rejectedCharacter: event.data } },
+                    });
+                    this.mask.state = null;
+                }
+            });
         },
         // /!\ Use externally
         focusInput() {
@@ -394,15 +399,6 @@ export default {
             text-decoration: inherit;
             letter-spacing: inherit;
             word-spacing: inherit;
-        }
-
-        &.hideArrows::-webkit-outer-spin-button,
-        &.hideArrows::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        &.hideArrows {
-            -moz-appearance: textfield;
         }
 
         /* wwEditor:start */
