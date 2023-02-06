@@ -1,17 +1,19 @@
+import { cleaveProperties, cleavePropertiesOrder } from './maskConfig.js';
+
 export default {
     inherit: {
         type: 'ww-text',
         exclude: ['text'],
     },
     editor: {
-        label: { en: 'Form Input', fr: 'Entrée de Formulaire' },
+        label: { en: 'Mask Input' },
         icon: 'text-input',
         customSettingsPropertiesOrder: [
             'value',
-            ['type', 'precision', 'min', 'max', 'hideArrows', 'displayPassword', 'rows', 'resize'],
             ['placeholder'],
             ['readonly', 'required'],
             ['debounce', 'debounceDelay'],
+            [...cleavePropertiesOrder],
         ],
         customStylePropertiesOrder: [
             'placeholderColor',
@@ -31,6 +33,9 @@ export default {
         { name: 'change', label: { en: 'On change' }, event: { value: '' }, default: true },
         { name: 'initValueChange', label: { en: 'On init value change' }, event: { value: '' } },
         { name: 'onEnterKey', label: { en: 'On enter key' }, event: { value: '' }, default: true },
+        { name: 'maskAccept', label: { en: 'On character accepted' }, event: { value: '' }, default: true },
+        { name: 'maskReject', label: { en: 'On character rejected' }, event: { value: '' }, default: true },
+        { name: 'maskComplete', label: { en: 'On mask completed' }, event: { value: '' }, default: true },
     ],
     properties: {
         placeholderColor: {
@@ -161,42 +166,6 @@ export default {
             },
             /* wwEditor:end */
         },
-        type: {
-            label: { en: 'Input type', fr: 'Input type' },
-            type: 'TextSelect',
-            options: {
-                options: [
-                    { value: 'text', label: { en: 'Short answer', fr: 'Texte' } },
-                    { value: 'textarea', label: { en: 'Long answer', fr: 'Texte' } },
-                    { value: 'email', label: { en: 'Email', fr: 'Email' } },
-                    { value: 'search', label: { en: 'Search', fr: 'Recherche' } },
-                    { value: 'password', label: { en: 'Password', fr: 'Mot de passe' } },
-                    { value: 'number', label: { en: 'Number', fr: 'Nombre' } },
-                    { value: 'decimal', label: { en: 'Decimal', fr: 'Decimal' } },
-                    { value: 'date', label: { en: 'Date', fr: 'Date' } },
-                    { value: 'time', label: { en: 'Time', fr: 'Heure' } },
-                    { value: 'tel', label: { en: 'Phone', fr: 'Téléphone' } },
-                ],
-            },
-            section: 'settings',
-            defaultValue: 'text',
-        },
-        displayPassword: {
-            label: {
-                en: 'Display password',
-            },
-            section: 'settings',
-            type: 'OnOff',
-            bindable: true,
-            defaultValue: false,
-            hidden: content => content.type !== 'password',
-            /* wwEditor:start */
-            bindingValidation: {
-                type: 'boolean',
-                tooltip: 'A boolean that defines if the input should display the password: `true | false`',
-            },
-            /* wwEditor:end */
-        },
         readonly: {
             label: { en: 'Read only', fr: 'Lecture seule' },
             type: 'OnOff',
@@ -223,25 +192,6 @@ export default {
                 tooltip: 'A boolean that defines if the input is required: `true | false`',
             },
             /* wwEditor:end */
-        },
-        precision: {
-            label: { en: 'Precision', fr: 'Precision' },
-            type: 'TextSelect',
-            options: {
-                options: [
-                    { value: '0.1', label: { en: '1.0' } },
-                    { value: '0.01', label: { en: '1.00' } },
-                    { value: '0.001', label: { en: '1.000' } },
-                    { value: '0.0001', label: { en: '1.0000' } },
-                    { value: '0.00001', label: { en: '1.00000' } },
-                    { value: '0.000001', label: { en: '1.000000' } },
-                    { value: '0.0000001', label: { en: '1.0000000' } },
-                    { value: '0.00000001', label: { en: '1.00000000' } },
-                ],
-            },
-            section: 'settings',
-            hidden: content => content.type !== 'decimal',
-            defaultValue: '0.1',
         },
         placeholder: {
             label: { en: 'Placeholder', fr: 'Placeholder' },
@@ -285,7 +235,7 @@ export default {
             type: 'Number',
             options: { min: 0, max: 100 },
             section: 'settings',
-            hidden: content => content.type !== 'number' && content.type !== 'decimal',
+            hidden: content => content.type !== 'number',
             defaultValue: '0',
             bindable: true,
             /* wwEditor:start */
@@ -300,7 +250,7 @@ export default {
             type: 'Number',
             options: { min: 0, max: 10000 },
             section: 'settings',
-            hidden: content => content.type !== 'number' && content.type !== 'decimal',
+            hidden: content => content.type !== 'number',
             defaultValue: '10000',
             bindable: true,
             /* wwEditor:start */
@@ -314,7 +264,7 @@ export default {
             label: { en: 'Hide arrows', fr: 'Masquer les flèches' },
             type: 'OnOff',
             section: 'settings',
-            hidden: content => content.type !== 'number' && content.type !== 'decimal',
+            hidden: content => content.type !== 'number',
             defaultValue: false,
         },
         debounce: {
@@ -339,5 +289,6 @@ export default {
             hidden: true,
             defaultValue: null,
         },
+        ...cleaveProperties,
     },
 };
