@@ -375,7 +375,6 @@ export default {
             const el = this.$refs.input;
             if (el) el.focus();
         },
-    },
 };
 </script>
 
