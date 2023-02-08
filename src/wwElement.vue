@@ -176,8 +176,21 @@ export default {
             return this.content.advancedPlaceholder && !this.isReadonly;
         },
         maskOptions() {
+            let mask;
+
+            if (this.content.maskType === 'pattern') {
+                mask = this.content.pattern;
+            } else {
+                mask =
+                    this.content.regexp instanceof RegExp
+                        ? this.content.regexp
+                        : typeof this.content.regexp === 'string'
+                        ? new RegExp(this.content.regexp)
+                        : null;
+            }
+
             return {
-                mask: this.content.maskType === 'pattern' ? this.content.pattern : new RegExp(this.content.regexp),
+                mask,
                 lazy: !this.content.placeholderVisible,
                 placeholderChar: this.content.placeholderChar,
             };

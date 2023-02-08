@@ -25,7 +25,7 @@ US Social security number: \`'000-00-0000'\` <br/>
 French Social security number: \`'00 00 00 000 000'\` <br/>
 `;
 
-const regExpHelp = `RegExp mask is just a string representation of a regular expression.
+const regExpHelp = `RegExp mask is a regular expression or a string representation of a regexp.
 
 Example of an email regexp: \`/^[a-zA-Z0-9.!#$%&'*+/=?^_{|}~-]+@a-zA-Z0-9?(?:.a-zA-Z0-9?)*$/\`
 
@@ -61,7 +61,7 @@ export const cleaveProperties = {
             tooltip: patternHelp,
         },
         propertyHelp: {
-            markdown: patternHelp,
+            tooltip: patternHelp,
         },
         /* wwEditor:end */
         hidden: content => content.maskType !== 'pattern',
@@ -98,14 +98,17 @@ export const cleaveProperties = {
         type: 'Text',
         section: 'settings',
         bindable: true,
-        defaultValue: `^\d+$`,
+        defaultValue: {
+            __wwtype: 'js',
+            code: `return /^[0-9]*$/ // Only numbers`,
+        },
         /* wwEditor:start */
         bindingValidation: {
             type: 'string',
             tooltip: regExpHelp,
         },
         propertyHelp: {
-            markdown: regExpHelp,
+            tooltip: regExpHelp,
         },
         /* wwEditor:end */
         hidden: content => content.maskType !== 'regexp',
