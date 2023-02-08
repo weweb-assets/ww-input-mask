@@ -1,4 +1,4 @@
-import { cleaveProperties, cleavePropertiesOrder } from './maskConfig.js';
+import { maskProperties, maskPropertiesOrder } from './maskConfig.js';
 
 export default {
     inherit: {
@@ -13,7 +13,7 @@ export default {
             ['placeholder'],
             ['readonly', 'required'],
             ['debounce', 'debounceDelay'],
-            [...cleavePropertiesOrder],
+            [...maskPropertiesOrder],
         ],
         customStylePropertiesOrder: [
             'placeholderColor',
@@ -289,6 +289,6 @@ export default {
             hidden: true,
             defaultValue: null,
         },
-        ...cleaveProperties,
+        ...maskProperties,
     },
 };

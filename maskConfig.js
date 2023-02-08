@@ -1,4 +1,4 @@
-export const cleavePropertiesOrder = ['maskType', 'pattern', 'regexp', 'placeholderVisible', 'placeholderChar'];
+export const maskPropertiesOrder = ['maskType', 'pattern', 'regexp', 'placeholderVisible', 'placeholderChar'];
 
 /* wwEditor:start */
 const patternHelp = `Pattern mask is just a string: \`'{#}000[aaa]/NIC-\`\`*[**]'\`
@@ -33,7 +33,7 @@ You can test and create your own regexp here: <a href="https://regex101.com/" ta
 `;
 /* wwEditor:end */
 
-export const cleaveProperties = {
+export const maskProperties = {
     maskType: {
         label: { en: 'Mask type' },
         type: 'TextSelect',
