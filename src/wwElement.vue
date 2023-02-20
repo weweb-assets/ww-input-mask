@@ -16,8 +16,8 @@
             :style="style"
             @blur="isFocused = false"
             @focus="isFocused = true"
-            @complete="handleInput($event)"
             @accept="handleInput($event)"
+            @complete="handleInput($event)"
             @keypress="handleReject"
         />
         <div
@@ -265,9 +265,7 @@ export default {
     methods: {
         handleInput(event) {
             const type = event.type;
-            if (!type) return;
             const newValue = event.target.value;
-            if (newValue === this.value) return;
             this.setValue(newValue);
 
             if (this.content.debounce) {
