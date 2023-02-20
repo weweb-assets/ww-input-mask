@@ -198,7 +198,6 @@ export default {
             type: 'Text',
             options: { placeholder: 'Type text' },
             section: 'settings',
-            hidden: content => content.type === 'date' || content.type === 'time',
             multiLang: true,
             bindable: true,
             defaultValue: {},

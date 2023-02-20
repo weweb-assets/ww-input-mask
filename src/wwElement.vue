@@ -7,21 +7,18 @@
             :value="value"
             v-imask="maskOptions"
             class="ww-input-basic__input"
-            :class="{
-                editing: isEditing,
-                'date-placeholder': content.type === 'date' && !value,
-            }"
+            :class="{ editing: isEditing }"
             type="text"
             :name="wwElementState.name"
             :readonly="content.readonly"
             :required="content.required"
             :placeholder="isAdvancedPlaceholder ? '' : wwLang.getText(content.placeholder)"
             :style="style"
-            @input="handleManualInput($event)"
             @blur="isFocused = false"
             @focus="isFocused = true"
-            @accept="onAccept"
-            @complete="onComplete"
+            @complete="handleInput($event)"
+            @accept="handleInput($event)"
+            @keypress="handleReject"
         />
         <div
             v-if="isAdvancedPlaceholder"
@@ -67,9 +64,7 @@ export default {
             }
             return props.content.type;
         });
-        const step = computed(() => {
-            return type.value === 'decimal' ? props.content.precision : '1';
-        });
+
         const { value: variableValue, setValue } = wwLib.wwVariable.useComponentVariable({
             uid: props.uid,
             name: 'value',
@@ -79,7 +74,7 @@ export default {
 
         const inputRef = ref('input');
 
-        return { variableValue, setValue, step, type, inputRef };
+        return { variableValue, setValue, type, inputRef };
     },
     data() {
         return {
@@ -93,10 +88,7 @@ export default {
             isMounted: false,
             isDebouncing: false,
             componentKey: 0,
-            mask: {
-                state: null,
-                event: null,
-            },
+            lastEvent: null,
         };
     },
     computed: {
@@ -271,15 +263,12 @@ export default {
         wwLib.getFrontDocument().addEventListener('keyup', this.onKeyEnter);
     },
     methods: {
-        handleManualInput(event) {
-            const value = event.target.value;
-            let newValue;
-            newValue = value;
-
+        handleInput(event) {
+            const type = event.type;
+            if (!type) return;
+            const newValue = event.target.value;
             if (newValue === this.value) return;
             this.setValue(newValue);
-
-            this.handleMaskEvents(event);
 
             if (this.content.debounce) {
                 this.isDebouncing = true;
@@ -287,14 +276,31 @@ export default {
                     clearTimeout(this.debounce);
                 }
                 this.debounce = setTimeout(() => {
-                    this.$emit('trigger-event', {
-                        name: 'change',
-                        event: { domEvent: event, value: newValue },
-                    });
+                    this.triggerEvents(type, newValue, event);
                     this.isDebouncing = false;
                 }, this.delay);
             } else {
-                this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value: newValue } });
+                this.triggerEvents(type, newValue, event);
+            }
+        },
+        handleReject() {
+            setTimeout(() => {
+                if (!this.lastEvent) {
+                    this.$emit('trigger-event', { name: 'maskReject', event: { value: this.value } });
+                }
+
+                this.lastEvent = null;
+            }, 0);
+        },
+        triggerEvents(type, value, event) {
+            if (type === 'complete') {
+                this.lastEvent = 'complete';
+                this.$emit('trigger-event', { name: 'maskComplete', event: { domEvent: event, value } });
+                this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
+            } else if (type === 'accept') {
+                this.lastEvent = 'accept';
+                this.$emit('trigger-event', { name: 'maskAccept', event: { domEvent: event, value } });
+                this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
             }
         },
         onKeyEnter(event) {
@@ -338,35 +344,6 @@ export default {
             this.componentKey += 1;
             this.$nextTick(() => {
                 this.maskInstance = IMask(this.$refs.input, this.maskOptions);
-                console.log(this.maskOptions, this.maskInstance);
-            });
-        },
-        onAccept(event) {
-            this.mask.state = 'accept';
-            this.mask.event = event.detail;
-        },
-        onComplete(event) {
-            this.mask.state = 'complete';
-            this.mask.event = event.detail;
-        },
-        handleMaskEvents(event) {
-            this.$nextTick(() => {
-                if (this.mask.state === 'accept') {
-                    console.log('accept');
-                    this.$emit('trigger-event', { name: 'maskAccept', event: { value: this.mask.event } });
-                    this.mask.state = null;
-                } else if (this.mask.state === 'complete') {
-                    console.log('complete');
-                    this.$emit('trigger-event', { name: 'maskComplete', event: { value: this.mask.event } });
-                    this.mask.state = null;
-                } else if (!this.mask.state) {
-                    console.log('reject');
-                    this.$emit('trigger-event', {
-                        name: 'maskReject',
-                        event: { value: { rejectedCharacter: event.data } },
-                    });
-                    this.mask.state = null;
-                }
             });
         },
         // /!\ Use externally
