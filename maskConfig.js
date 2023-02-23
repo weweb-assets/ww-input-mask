@@ -98,10 +98,7 @@ export const maskProperties = {
         type: 'Text',
         section: 'settings',
         bindable: true,
-        defaultValue: {
-            __wwtype: 'js',
-            code: `return /^[0-9]*$/ // Only numbers`,
-        },
+        defaultValue: '',
         /* wwEditor:start */
         bindingValidation: {
             type: 'string',
