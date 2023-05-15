@@ -89,6 +89,7 @@ export default {
             isDebouncing: false,
             componentKey: 0,
             lastEvent: null,
+            lastKey: '',
         };
     },
     computed: {
@@ -220,10 +221,6 @@ export default {
         },
         'content.advancedPlaceholder': {
             async handler(value) {
-                this.$nextTick(() => {
-                    this.handleObserver();
-                });
-
                 /* wwEditor:start */
                 if (this.wwEditorState.isACopy) {
                     return;
@@ -242,6 +239,10 @@ export default {
 
                 this.$emit('update:content:effect', { placeholderElement });
                 /* wwEditor:end */
+
+                this.$nextTick(() => {
+                    this.handleObserver();
+                });
             },
         },
         /* wwEditor:start */
@@ -281,25 +282,35 @@ export default {
                 this.triggerEvents(type, newValue, event);
             }
         },
-        handleReject() {
+        handleReject(event) {
+            if (event.key === 'Enter') return;
+            this.lastKey = event.key;
+
             setTimeout(() => {
                 if (!this.lastEvent) {
-                    this.$emit('trigger-event', { name: 'maskReject', event: { value: this.value } });
+                    this.$emit('trigger-event', { name: 'characterReject', event: { value: this.value } });
                 }
 
                 this.lastEvent = null;
             }, 0);
         },
         triggerEvents(type, value, event) {
-            if (type === 'complete') {
-                this.lastEvent = 'complete';
-                this.$emit('trigger-event', { name: 'maskComplete', event: { domEvent: event, value } });
-                this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
-            } else if (type === 'accept') {
-                this.lastEvent = 'accept';
-                this.$emit('trigger-event', { name: 'maskAccept', event: { domEvent: event, value } });
-                this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
-            }
+            this.$nextTick(() => {
+                if (type === 'complete') {
+                    this.lastEvent = 'complete';
+                    this.$emit('trigger-event', {
+                        name: 'maskComplete',
+                        event: { domEvent: event, value: this.lastKey },
+                    });
+                } else if (type === 'accept') {
+                    this.lastEvent = 'accept';
+                    this.$emit('trigger-event', {
+                        name: 'characterAccept',
+                        event: { domEvent: event, value: this.lastKey },
+                    });
+                    this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
+                }
+            });
         },
         onKeyEnter(event) {
             if (event.key === 'Enter' && this.isFocused)

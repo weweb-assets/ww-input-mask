@@ -33,8 +33,8 @@ export default {
         { name: 'change', label: { en: 'On change' }, event: { value: '' }, default: true },
         { name: 'initValueChange', label: { en: 'On init value change' }, event: { value: '' } },
         { name: 'onEnterKey', label: { en: 'On enter key' }, event: { value: '' }, default: true },
-        { name: 'maskAccept', label: { en: 'On character accepted' }, event: { value: '' }, default: true },
-        { name: 'maskReject', label: { en: 'On character rejected' }, event: { value: '' }, default: true },
+        { name: 'characterAccept', label: { en: 'On character accepted' }, event: { value: '' }, default: true },
+        { name: 'characterReject', label: { en: 'On character rejected' }, event: { value: '' }, default: true },
         { name: 'maskComplete', label: { en: 'On mask completed' }, event: { value: '' }, default: true },
     ],
     properties: {
