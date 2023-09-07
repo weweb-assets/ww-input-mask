@@ -9,7 +9,6 @@ Where definitions are:
 - * - any char
 - [] - make input optional
 - {} - include fixed part in unmasked value
-- \` - prevent symbols shift back
 
 Examples:
 
