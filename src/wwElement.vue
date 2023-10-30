@@ -1,5 +1,4 @@
 <template>
-    {{ JSON.stringify(maskOptions) }}
     <div class="ww-input-basic" :class="{ editing: isEditing }">
         <input
             ref="input"
@@ -163,25 +162,11 @@ export default {
             return this.content.advancedPlaceholder && !this.isReadonly;
         },
         maskOptions() {
-            if (this.content.maskType !== 'custom')
-                return {
-                    mask: this.content.pattern,
-                    lazy: !this.content.placeholderVisible,
-                    placeholderChar: this.content.placeholderChar,
-                };
-
-            if (typeof this.content.options === 'function') {
-                console.log(JSON.parse(JSON.stringify(this.content.options(IMask))));
-
-                try {
-                    return this.content.options(IMask);
-                } catch (error) {
-                    wwLib.wwLog.error('Error occurred while processing the mask options function:', error);
-                    return {};
-                }
-            }
-
-            return this.content.options || {};
+            return {
+                mask: this.content.pattern,
+                lazy: !this.content.placeholderVisible,
+                placeholderChar: this.content.placeholderChar,
+            };
         },
     },
     watch: {
@@ -313,7 +298,6 @@ export default {
         onCharacterReject(event) {
             if (event.key === 'Enter') return;
             this.$emit('trigger-event', { name: 'characterReject', event: { value: this.value } });
-            console.log('REJECT');
         },
         dispatchInputEvents(value, event, type) {
             if (type === 'complete') {
@@ -321,15 +305,12 @@ export default {
                     name: 'maskComplete',
                     event: { domEvent: event, value: this.prevValue },
                 });
-                console.log('COMPLETE');
             } else if (type === 'accept') {
                 this.$emit('trigger-event', {
                     name: 'characterAccept',
                     event: { domEvent: event, value: this.prevValue },
                 });
                 this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
-                console.log('ACCEPT');
-                console.log('CHANGE');
             }
         },
         onKeyEnter(event) {
