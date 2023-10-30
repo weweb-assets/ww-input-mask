@@ -1,11 +1,10 @@
 <template>
+    {{ JSON.stringify(maskOptions) }}
     <div class="ww-input-basic" :class="{ editing: isEditing }">
         <input
             ref="input"
             v-bind="$attrs"
-            :key="componentKey"
             :value="value"
-            v-imask="maskOptions"
             class="ww-input-basic__input"
             :class="{ editing: isEditing }"
             type="text"
@@ -17,8 +16,6 @@
             @blur="isFocused = false"
             @focus="isFocused = true"
             @input="onInputChange"
-            @accept="handleDebounce"
-            @complete="handleDebounce"
         />
         <div
             v-if="isAdvancedPlaceholder"
@@ -39,8 +36,8 @@
 </template>
 
 <script>
-import { computed, ref } from 'vue';
-import { IMaskDirective } from 'vue-imask';
+import { computed, ref, nextTick } from 'vue';
+import IMask from 'imask';
 
 export default {
     inheritAttrs: false,
@@ -54,9 +51,6 @@ export default {
         wwElementState: { type: Object, required: true },
     },
     emits: ['trigger-event', 'add-state', 'remove-state', 'update:content:effect'],
-    directives: {
-        imask: IMaskDirective,
-    },
     setup(props) {
         const type = computed(() => {
             if (Object.keys(props.wwElementState.props).includes('type')) {
@@ -72,12 +66,13 @@ export default {
             defaultValue: props.content.value === undefined ? '' : props.content.value,
         });
 
-        const inputRef = ref('input');
+        const input = ref(null);
 
-        return { variableValue, setValue, type, inputRef };
+        return { variableValue, setValue, type, input };
     },
     data() {
         return {
+            mask: null,
             paddingLeft: '0px',
             placeholderPosition: {
                 top: '0px',
@@ -87,10 +82,8 @@ export default {
             noTransition: false,
             isMounted: false,
             isDebouncing: false,
-            componentKey: 0,
-            lastEvent: null,
-            lastKey: '',
-            prevValue: '',
+            wasAccepted: false,
+            wasCompleted: false,
         };
     },
     computed: {
@@ -170,14 +163,34 @@ export default {
             return this.content.advancedPlaceholder && !this.isReadonly;
         },
         maskOptions() {
-            return {
-                mask: this.content.pattern,
-                lazy: !this.content.placeholderVisible,
-                placeholderChar: this.content.placeholderChar,
-            };
+            if (this.content.maskType !== 'custom')
+                return {
+                    mask: this.content.pattern,
+                    lazy: !this.content.placeholderVisible,
+                    placeholderChar: this.content.placeholderChar,
+                };
+
+            if (typeof this.content.options === 'function') {
+                console.log(JSON.parse(JSON.stringify(this.content.options(IMask))));
+
+                try {
+                    return this.content.options(IMask);
+                } catch (error) {
+                    wwLib.wwLog.error('Error occurred while processing the mask options function:', error);
+                    return {};
+                }
+            }
+
+            return this.content.options || {};
         },
     },
     watch: {
+        maskOptions: {
+            deep: true,
+            handler() {
+                this.initIMask();
+            },
+        },
         'content.value'(newValue) {
             if (newValue === this.value) return;
             this.setValue(newValue);
@@ -202,7 +215,7 @@ export default {
                 this.handleObserver();
             });
         },
-        inputRef() {
+        input() {
             this.$nextTick(() => {
                 this.handleObserver();
             });
@@ -239,25 +252,50 @@ export default {
         if (this.resizeObserverBorder) this.resizeObserverBorder.disconnect();
 
         wwLib.getFrontDocument().removeEventListener('keyup', this.onKeyEnter);
+
+        if (this.mask) this.mask.destroy();
     },
     mounted() {
         this.isMounted = true;
         this.handleObserver();
         wwLib.getFrontDocument().addEventListener('keyup', this.onKeyEnter);
+
+        this.initIMask();
     },
     methods: {
+        async initIMask() {
+            if (this.mask) this.mask.destroy();
+            await nextTick();
+
+            this.mask = IMask(this.input, this.maskOptions);
+            this.mask.on('accept', event => this.handleDebounce(event, 'accept'));
+            this.mask.on('complete', event => this.handleDebounce(event, 'complete'));
+        },
         onInputChange(event) {
-            const newValue = event.target.value;
-            if (this.prevValue === newValue) {
+            this.wasAccepted = false;
+            this.wasCompleted = false;
+
+            setTimeout(() => {
+                this.checkForRejection(event);
+            }, 100);
+        },
+        checkForRejection(event) {
+            if (!this.wasAccepted && !this.wasCompleted) {
                 this.onCharacterReject(event);
-            } else {
-                this.prevValue = newValue;
-                this.handleDebounce(event);
             }
         },
-        handleDebounce(event) {
+        handleDebounce(event, type) {
+            this.wasAccepted = false;
+            this.wasCompleted = false;
+
             const newValue = event.target.value;
             this.setValue(newValue);
+
+            if (type === 'accept') {
+                this.wasAccepted = true;
+            } else if (type === 'complete') {
+                this.wasCompleted = true;
+            }
 
             if (this.content.debounce) {
                 this.isDebouncing = true;
@@ -265,41 +303,34 @@ export default {
                     clearTimeout(this.debounce);
                 }
                 this.debounce = setTimeout(() => {
-                    this.dispatchInputEvents(newValue, event);
+                    this.dispatchInputEvents(newValue, event, type);
                     this.isDebouncing = false;
                 }, this.delay);
             } else {
-                this.dispatchInputEvents(newValue, event);
+                this.dispatchInputEvents(newValue, event, type);
             }
         },
         onCharacterReject(event) {
             if (event.key === 'Enter') return;
-            this.lastKey = event.key;
-
-            setTimeout(() => {
-                if (!this.lastEvent) {
-                    this.$emit('trigger-event', { name: 'characterReject', event: { value: this.value } });
-                }
-
-                this.lastEvent = null;
-            }, 0);
+            this.$emit('trigger-event', { name: 'characterReject', event: { value: this.value } });
+            console.log('REJECT');
         },
-        dispatchInputEvents(value, event) {
-            const type = event.type;
-            this.$nextTick(() => {
-                if (type === 'complete') {
-                    this.$emit('trigger-event', {
-                        name: 'maskComplete',
-                        event: { domEvent: event, value: this.prevValue },
-                    });
-                } else if (type === 'accept') {
-                    this.$emit('trigger-event', {
-                        name: 'characterAccept',
-                        event: { domEvent: event, value: this.prevValue },
-                    });
-                    this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
-                }
-            });
+        dispatchInputEvents(value, event, type) {
+            if (type === 'complete') {
+                this.$emit('trigger-event', {
+                    name: 'maskComplete',
+                    event: { domEvent: event, value: this.prevValue },
+                });
+                console.log('COMPLETE');
+            } else if (type === 'accept') {
+                this.$emit('trigger-event', {
+                    name: 'characterAccept',
+                    event: { domEvent: event, value: this.prevValue },
+                });
+                this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
+                console.log('ACCEPT');
+                console.log('CHANGE');
+            }
         },
         onKeyEnter(event) {
             if (event.key === 'Enter' && this.isFocused)
