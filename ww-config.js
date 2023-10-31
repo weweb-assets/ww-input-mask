@@ -30,12 +30,17 @@ export default {
         ],
     },
     triggerEvents: [
-        { name: 'change', label: { en: 'On change' }, event: { value: '' }, default: true },
+        { name: 'change', label: { en: 'On change' }, event: { value: '' } },
         { name: 'initValueChange', label: { en: 'On init value change' }, event: { value: '' } },
-        { name: 'onEnterKey', label: { en: 'On enter key' }, event: { value: '' }, default: true },
-        { name: 'characterAccept', label: { en: 'On character accepted' }, event: { value: '' }, default: true },
-        { name: 'characterReject', label: { en: 'On character rejected' }, event: { value: '' }, default: true },
-        { name: 'maskComplete', label: { en: 'On mask completed' }, event: { value: '' }, default: true },
+        { name: 'onEnterKey', label: { en: 'On enter key' }, event: { value: '' } },
+        { name: 'characterAccept', label: { en: 'On character accepted' }, event: { value: '', character: '' } },
+        {
+            name: 'characterReject',
+            label: { en: 'On character rejected' },
+            event: { value: '', character: '' },
+            default: true,
+        },
+        { name: 'maskComplete', label: { en: 'On mask completed' }, event: { value: '' } },
     ],
     properties: {
         placeholderColor: {

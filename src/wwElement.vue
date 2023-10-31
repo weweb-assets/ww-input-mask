@@ -2,6 +2,7 @@
     <div class="ww-input-basic" :class="{ editing: isEditing }">
         <input
             ref="input"
+            :key="componentKey"
             v-bind="$attrs"
             :value="value"
             class="ww-input-basic__input"
@@ -83,6 +84,7 @@ export default {
             isDebouncing: false,
             wasAccepted: false,
             wasCompleted: false,
+            componentKey: 0,
         };
     },
     computed: {
@@ -165,7 +167,7 @@ export default {
             return {
                 mask: this.content.pattern,
                 lazy: !this.content.placeholderVisible,
-                placeholderChar: this.content.placeholderChar,
+                ...(this.content.placeholderVisible ? { placeholderChar: this.content.placeholderChar } : {}),
             };
         },
     },
@@ -175,6 +177,9 @@ export default {
             handler() {
                 this.initIMask();
             },
+        },
+        isEditing() {
+            this.initIMask();
         },
         'content.value'(newValue) {
             if (newValue === this.value) return;
@@ -250,6 +255,7 @@ export default {
     methods: {
         async initIMask() {
             if (this.mask) this.mask.destroy();
+            this.componentKey++;
             await nextTick();
 
             this.mask = IMask(this.input, this.maskOptions);
@@ -297,18 +303,21 @@ export default {
         },
         onCharacterReject(event) {
             if (event.key === 'Enter') return;
-            this.$emit('trigger-event', { name: 'characterReject', event: { value: this.value } });
+            this.$emit('trigger-event', {
+                name: 'characterReject',
+                event: { domEvent: event, value: this.value, character: event.data },
+            });
         },
         dispatchInputEvents(value, event, type) {
             if (type === 'complete') {
                 this.$emit('trigger-event', {
                     name: 'maskComplete',
-                    event: { domEvent: event, value: this.prevValue },
+                    event: { domEvent: event, value },
                 });
             } else if (type === 'accept') {
                 this.$emit('trigger-event', {
                     name: 'characterAccept',
-                    event: { domEvent: event, value: this.prevValue },
+                    event: { domEvent: event, value, character: event.data },
                 });
                 this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
             }
