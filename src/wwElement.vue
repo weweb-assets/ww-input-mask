@@ -164,10 +164,13 @@ export default {
             return this.content.advancedPlaceholder && !this.isReadonly;
         },
         maskOptions() {
+            const placeholder = `${this.content.placeholderChar}`;
+
             return {
                 mask: this.content.pattern,
-                lazy: !this.content.placeholderVisible,
-                ...(this.content.placeholderVisible ? { placeholderChar: this.content.placeholderChar } : {}),
+                ...(this.content.placeholderVisible && placeholder.length
+                    ? { placeholderChar: placeholder, lazy: false }
+                    : {}),
             };
         },
     },
@@ -177,6 +180,12 @@ export default {
             handler() {
                 this.initIMask();
             },
+        },
+        'content.placeholderVisible'() {
+            this.initIMask();
+        },
+        'content.placeholderChar'() {
+            this.initIMask();
         },
         isEditing() {
             this.initIMask();
