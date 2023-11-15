@@ -2,10 +2,9 @@
     <div class="ww-input-basic" :class="{ editing: isEditing }">
         <input
             ref="input"
-            v-bind="$attrs"
             :key="componentKey"
+            v-bind="$attrs"
             :value="value"
-            v-imask="maskOptions"
             class="ww-input-basic__input"
             :class="{ editing: isEditing }"
             type="text"
@@ -16,9 +15,7 @@
             :style="style"
             @blur="isFocused = false"
             @focus="isFocused = true"
-            @accept="handleInput($event)"
-            @complete="handleInput($event)"
-            @keypress="handleReject"
+            @input="onInputChange"
         />
         <div
             v-if="isAdvancedPlaceholder"
@@ -39,8 +36,8 @@
 </template>
 
 <script>
-import { computed, ref } from 'vue';
-import { IMaskDirective } from 'vue-imask';
+import { computed, ref, nextTick } from 'vue';
+import IMask from 'imask';
 
 export default {
     inheritAttrs: false,
@@ -54,9 +51,6 @@ export default {
         wwElementState: { type: Object, required: true },
     },
     emits: ['trigger-event', 'add-state', 'remove-state', 'update:content:effect'],
-    directives: {
-        imask: IMaskDirective,
-    },
     setup(props) {
         const type = computed(() => {
             if (Object.keys(props.wwElementState.props).includes('type')) {
@@ -72,12 +66,13 @@ export default {
             defaultValue: props.content.value === undefined ? '' : props.content.value,
         });
 
-        const inputRef = ref('input');
+        const input = ref(null);
 
-        return { variableValue, setValue, type, inputRef };
+        return { variableValue, setValue, type, input };
     },
     data() {
         return {
+            mask: null,
             paddingLeft: '0px',
             placeholderPosition: {
                 top: '0px',
@@ -87,8 +82,9 @@ export default {
             noTransition: false,
             isMounted: false,
             isDebouncing: false,
+            wasAccepted: false,
+            wasCompleted: false,
             componentKey: 0,
-            lastEvent: null,
         };
     },
     computed: {
@@ -168,27 +164,32 @@ export default {
             return this.content.advancedPlaceholder && !this.isReadonly;
         },
         maskOptions() {
-            let mask;
-
-            if (this.content.maskType === 'pattern') {
-                mask = this.content.pattern;
-            } else {
-                mask =
-                    this.content.regexp instanceof RegExp
-                        ? this.content.regexp
-                        : typeof this.content.regexp === 'string'
-                        ? new RegExp(this.content.regexp)
-                        : null;
-            }
+            const placeholder = `${this.content.placeholderChar}`;
 
             return {
-                mask,
-                lazy: !this.content.placeholderVisible,
-                placeholderChar: this.content.placeholderChar,
+                mask: this.content.pattern,
+                ...(this.content.placeholderVisible && placeholder.length
+                    ? { placeholderChar: placeholder, lazy: false }
+                    : {}),
             };
         },
     },
     watch: {
+        maskOptions: {
+            deep: true,
+            handler() {
+                this.initIMask();
+            },
+        },
+        'content.placeholderVisible'() {
+            this.initIMask();
+        },
+        'content.placeholderChar'() {
+            this.initIMask();
+        },
+        isEditing() {
+            this.initIMask();
+        },
         'content.value'(newValue) {
             if (newValue === this.value) return;
             this.setValue(newValue);
@@ -213,17 +214,13 @@ export default {
                 this.handleObserver();
             });
         },
-        inputRef() {
+        input() {
             this.$nextTick(() => {
                 this.handleObserver();
             });
         },
         'content.advancedPlaceholder': {
             async handler(value) {
-                this.$nextTick(() => {
-                    this.handleObserver();
-                });
-
                 /* wwEditor:start */
                 if (this.wwEditorState.isACopy) {
                     return;
@@ -242,31 +239,63 @@ export default {
 
                 this.$emit('update:content:effect', { placeholderElement });
                 /* wwEditor:end */
+
+                this.$nextTick(() => {
+                    this.handleObserver();
+                });
             },
         },
-        /* wwEditor:start */
-        maskOptions() {
-            this.initMask();
-        },
-        /* wwEditor:end */
     },
     beforeUnmount() {
         if (this.resizeObserverContent) this.resizeObserverContent.disconnect();
         if (this.resizeObserverBorder) this.resizeObserverBorder.disconnect();
 
         wwLib.getFrontDocument().removeEventListener('keyup', this.onKeyEnter);
+
+        if (this.mask) this.mask.destroy();
     },
     mounted() {
-        this.initMask();
         this.isMounted = true;
         this.handleObserver();
         wwLib.getFrontDocument().addEventListener('keyup', this.onKeyEnter);
+
+        this.initIMask();
     },
     methods: {
-        handleInput(event) {
-            const type = event.type;
+        async initIMask() {
+            if (this.mask) this.mask.destroy();
+            this.componentKey++;
+            await nextTick();
+
+            this.mask = IMask(this.input, this.maskOptions);
+            this.mask.on('accept', event => this.handleDebounce(event, 'accept'));
+            this.mask.on('complete', event => this.handleDebounce(event, 'complete'));
+        },
+        onInputChange(event) {
+            this.wasAccepted = false;
+            this.wasCompleted = false;
+
+            setTimeout(() => {
+                this.checkForRejection(event);
+            }, 100);
+        },
+        checkForRejection(event) {
+            if (!this.wasAccepted && !this.wasCompleted) {
+                this.onCharacterReject(event);
+            }
+        },
+        handleDebounce(event, type) {
+            this.wasAccepted = false;
+            this.wasCompleted = false;
+
             const newValue = event.target.value;
             this.setValue(newValue);
+
+            if (type === 'accept') {
+                this.wasAccepted = true;
+            } else if (type === 'complete') {
+                this.wasCompleted = true;
+            }
 
             if (this.content.debounce) {
                 this.isDebouncing = true;
@@ -274,30 +303,31 @@ export default {
                     clearTimeout(this.debounce);
                 }
                 this.debounce = setTimeout(() => {
-                    this.triggerEvents(type, newValue, event);
+                    this.dispatchInputEvents(newValue, event, type);
                     this.isDebouncing = false;
                 }, this.delay);
             } else {
-                this.triggerEvents(type, newValue, event);
+                this.dispatchInputEvents(newValue, event, type);
             }
         },
-        handleReject() {
-            setTimeout(() => {
-                if (!this.lastEvent) {
-                    this.$emit('trigger-event', { name: 'maskReject', event: { value: this.value } });
-                }
-
-                this.lastEvent = null;
-            }, 0);
+        onCharacterReject(event) {
+            if (event.key === 'Enter') return;
+            this.$emit('trigger-event', {
+                name: 'characterReject',
+                event: { domEvent: event, value: this.value, character: event.data },
+            });
         },
-        triggerEvents(type, value, event) {
+        dispatchInputEvents(value, event, type) {
             if (type === 'complete') {
-                this.lastEvent = 'complete';
-                this.$emit('trigger-event', { name: 'maskComplete', event: { domEvent: event, value } });
-                this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
+                this.$emit('trigger-event', {
+                    name: 'maskComplete',
+                    event: { domEvent: event, value },
+                });
             } else if (type === 'accept') {
-                this.lastEvent = 'accept';
-                this.$emit('trigger-event', { name: 'maskAccept', event: { domEvent: event, value } });
+                this.$emit('trigger-event', {
+                    name: 'characterAccept',
+                    event: { domEvent: event, value, character: event.data },
+                });
                 this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
             }
         },
@@ -334,15 +364,6 @@ export default {
             setTimeout(() => {
                 this.noTransition = false;
             }, wwLib.wwUtils.getLengthUnit(this.content.transition)[0]);
-        },
-        initMask() {
-            if (!this.$refs.input || !this.maskOptions.mask) return;
-
-            this.setValue('');
-            this.componentKey += 1;
-            this.$nextTick(() => {
-                this.maskInstance = IMask(this.$refs.input, this.maskOptions);
-            });
         },
         // /!\ Use externally
         focusInput() {
