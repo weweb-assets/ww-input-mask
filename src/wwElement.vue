@@ -139,7 +139,7 @@ export default {
         },
         style() {
             return {
-                ...wwLib.getTextStyleFromContent(this.content),
+                ...wwLib.wwUtils.getTextStyleFromContent(this.content),
                 '--placeholder-color': this.content.placeholderColor,
             };
         },
