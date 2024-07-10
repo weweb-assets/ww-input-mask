@@ -68,7 +68,11 @@ export default {
 
         const input = ref(null);
 
-        return { variableValue, setValue, type, input };
+        /* wwEditor:start */
+        const { createElement } = wwLib.wwElement.useCreate();
+        /* wwEditor:end */
+
+        return { variableValue, setValue, type, input, createElement };
     },
     data() {
         return {
@@ -229,7 +233,7 @@ export default {
                 let placeholderElement = null;
 
                 if (value) {
-                    placeholderElement = await wwLib.createElement(
+                    placeholderElement = await createElement(
                         'ww-text',
                         {},
                         { name: 'Placeholder' },
