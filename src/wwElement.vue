@@ -66,9 +66,16 @@ export default {
             defaultValue: props.content.value === undefined ? '' : props.content.value,
         });
 
+        const { setValue: setUnmaskedValue } = wwLib.wwVariable.useComponentVariable({
+            uid: props.uid,
+            name: 'raw value',
+            type: computed(() => (['decimal', 'number'].includes(type.value) ? 'number' : 'string')),
+            defaultValue: props.content.value === undefined ? '' : props.content.value,
+        });
+
         const input = ref(null);
 
-        return { variableValue, setValue, type, input };
+        return { variableValue, setValue, setUnmaskedValue, type, input };
     },
     data() {
         return {
@@ -193,6 +200,7 @@ export default {
         'content.value'(newValue) {
             if (newValue === this.value) return;
             this.setValue(newValue);
+            this.setUnmaskedValue(this.mask.unmaskedValue);
             this.$emit('trigger-event', { name: 'initValueChange', event: { value: newValue } });
         },
         isReadonly: {
@@ -290,6 +298,7 @@ export default {
 
             const newValue = event.target.value;
             this.setValue(newValue);
+            this.setUnmaskedValue(this.mask.unmaskedValue);
 
             if (type === 'accept') {
                 this.wasAccepted = true;
