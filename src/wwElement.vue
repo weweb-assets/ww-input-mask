@@ -1,12 +1,12 @@
 <template>
-    <div class="ww-input-basic" :class="{ editing: isEditing }">
+    <div class="ww-input-basic" :class="{ editing: isEditing }" v-bind="rootBinding">
         <input
             ref="input"
             :key="componentKey"
-            v-bind="$attrs"
+            :id="$attrs.id"
             :value="value"
             class="ww-input-basic__input"
-            :class="{ editing: isEditing }"
+            :class="$attrs.class"
             type="text"
             :name="wwElementState.name"
             :readonly="content.readonly"
@@ -21,7 +21,6 @@
             v-if="isAdvancedPlaceholder"
             ref="placeholder"
             class="ww-input-basic__placeholder"
-            :class="{ editing: isEditing }"
             :style="placeholderSyle"
             @click="focusInput"
         >
@@ -38,6 +37,20 @@
 <script>
 import { computed, ref, nextTick } from 'vue';
 import IMask from 'imask';
+
+const INPUT_STYLE_PROPERTIES = [
+    'padding',
+    'border',
+    'borderLeft',
+    'borderRight',
+    'borderTop',
+    'borderBottom',
+    'borderRadius',
+    'background',
+    'height',
+    'boxShadow',
+    'cursor',
+];
 
 export default {
     inheritAttrs: false,
@@ -101,6 +114,20 @@ export default {
         delay() {
             return wwLib.wwUtils.getLengthUnit(this.content.debounceDelay)[0];
         },
+        rootBinding() {
+            const style = { ...(this.$attrs.style || {}) };
+            INPUT_STYLE_PROPERTIES.forEach(property => {
+                delete style[property];
+            });
+            const bindings = {
+                ...this.$attrs,
+                style,
+            };
+            delete bindings.id;
+            delete bindings.class;
+
+            return bindings;
+        },
         placeholderSyle() {
             const transition = `all ${this.noTransition ? '0ms' : this.content.transition} ${
                 this.content.timingFunction
@@ -125,6 +152,7 @@ export default {
 
             if (this.content.forceAnimation && this.isEditing) return animatedPosition;
             if (this.value && this.value !== 0) return animatedPosition;
+            animatedPosition.cursor = this.$attrs?.style?.cursor || 'text';
             if (this.isDebouncing) return animatedPosition;
             if (this.content.animationTrigger === 'focus' && this.isFocused) return animatedPosition;
 
@@ -135,13 +163,23 @@ export default {
                 transform: 'translate3d(0, 0%, 0) scale(1)',
                 transformOrigin: 'left',
                 transition,
+                cursor: this.$attrs?.style?.cursor || 'text',
             };
         },
         style() {
-            return {
-                ...wwLib.getTextStyleFromContent(this.content),
+            const style = {
+                ...wwLib.wwUtils.getTextStyleFromContent(this.content),
                 '--placeholder-color': this.content.placeholderColor,
             };
+            delete style['whiteSpaceCollapse']; //Create a visual bug in Firefox
+            delete style['whiteSpace']; //Create a visual bug in Firefox
+            INPUT_STYLE_PROPERTIES.forEach(property => {
+                if (this.$attrs?.style?.[property]) {
+                    style[property] = this.$attrs?.style?.[property];
+                }
+            });
+
+            return style;
         },
         inputType() {
             if (!this.content) return 'text';
@@ -377,8 +415,19 @@ export default {
 
 <style lang="scss" scoped>
 .ww-input-basic {
-    width: 100%;
-    height: 100%;
+    position: relative;
+    isolation: isolate;
+
+    /* wwEditor:start */
+    &.editing {
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+        }
+    }
+    /* wwEditor:end */
 
     &__input {
         width: 100%;
@@ -409,30 +458,11 @@ export default {
             letter-spacing: inherit;
             word-spacing: inherit;
         }
-
-        /* wwEditor:start */
-        &.editing {
-            pointer-events: none;
-        }
-        /* wwEditor:end */
     }
 
     &__placeholder {
         position: absolute;
-        cursor: text;
         height: fit-content;
-
-        /* wwEditor:start */
-        &.editing {
-            cursor: initial;
-        }
-        /* wwEditor:end */
     }
-
-    /* wwEditor:start */
-    &.editing {
-        pointer-events: none;
-    }
-    /* wwEditor:end */
 }
 </style>
