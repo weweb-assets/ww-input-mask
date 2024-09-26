@@ -7,6 +7,7 @@
             :value="value"
             class="ww-input-basic__input"
             :class="$attrs.class"
+            v-bind="inputBinding"
             type="text"
             :name="wwElementState.name"
             :readonly="content.readonly"
@@ -35,7 +36,7 @@
 </template>
 
 <script>
-import { computed, ref, nextTick } from 'vue';
+import { computed, ref, nextTick, inject } from 'vue';
 import IMask from 'imask';
 
 const INPUT_STYLE_PROPERTIES = [
@@ -47,7 +48,6 @@ const INPUT_STYLE_PROPERTIES = [
     'borderBottom',
     'borderRadius',
     'background',
-    'height',
     'boxShadow',
     'cursor',
 ];
@@ -88,7 +88,9 @@ export default {
 
         const input = ref(null);
 
-        return { variableValue, setValue, setUnmaskedValue, type, input };
+        const state = inject('componentState', {});
+
+        return { variableValue, setValue, setUnmaskedValue, type, input, state };
     },
     data() {
         return {
@@ -126,8 +128,17 @@ export default {
             INPUT_STYLE_PROPERTIES.forEach(property => {
                 delete style[property];
             });
+
+            let rootAttrs = {};
+            for (const key in this.$attrs) {
+                if ((this.state?.attributes || []).some(attr => attr.name === key)) {
+                    continue;
+                }
+                rootAttrs[key] = this.$attrs[key];
+            }
+
             const bindings = {
-                ...this.$attrs,
+                ...rootAttrs,
                 style,
             };
             delete bindings.id;
@@ -217,6 +228,13 @@ export default {
                     ? { placeholderChar: placeholder, lazy: false }
                     : {}),
             };
+        },
+        inputBinding() {
+            let attrs = (this.state?.attributes || []).reduce((acc, attr) => {
+                acc[attr.name] = attr.value;
+                return acc;
+            }, {});
+            return { ...attrs, ...(this.wwElementState.props.attributes || {}) };
         },
     },
     watch: {
