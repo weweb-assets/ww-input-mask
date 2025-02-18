@@ -64,7 +64,7 @@ export default {
         wwElementState: { type: Object, required: true },
     },
     emits: ['trigger-event', 'add-state', 'remove-state', 'update:content:effect'],
-    setup(props) {
+    setup(props, { emit }) {
         const type = computed(() => {
             if (Object.keys(props.wwElementState.props).includes('type')) {
                 return props.wwElementState.props.type;
@@ -89,6 +89,19 @@ export default {
         const input = ref(null);
 
         const state = inject('componentState', {});
+
+        const useForm = inject('_wwForm:useForm', () => {});
+
+        const fieldName = computed(() => props.content.fieldName);
+        const validation = computed(() => props.content.validation);
+        const customValidation = computed(() => props.content.customValidation);
+        const required = computed(() => props.content.required);
+
+        useForm(
+            variableValue,
+            { fieldName, validation, customValidation, required },
+            { elementState: props.wwElementState, emit, sidepanelFormPath: 'form' }
+        );
 
         return { variableValue, setValue, setUnmaskedValue, type, input, state };
     },
