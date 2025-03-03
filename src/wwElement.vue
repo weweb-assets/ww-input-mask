@@ -4,7 +4,7 @@
             ref="input"
             :key="componentKey"
             :id="$attrs.id"
-            :value="value"
+            :value="formattedValue"
             class="ww-input-basic__input"
             :class="$attrs.class"
             v-bind="inputBinding"
@@ -14,9 +14,11 @@
             :required="content.required"
             :placeholder="isAdvancedPlaceholder ? '' : wwLang.getText(content.placeholder)"
             :style="style"
-            @blur="isFocused = false"
-            @focus="isFocused = true"
+            @blur="onBlur"
+            @focus="onFocus"
             @input="onInputChange"
+            @mouseenter="onMouseEnter"
+            @mouseleave="onMouseLeave"
         />
         <div
             v-if="isAdvancedPlaceholder"
@@ -114,6 +116,7 @@ export default {
                 left: '0px',
             },
             isFocused: false,
+            isHovered: false,
             noTransition: false,
             isMounted: false,
             isDebouncing: false,
@@ -132,6 +135,9 @@ export default {
         },
         value() {
             return this.variableValue;
+        },
+        formattedValue() {
+            return this.mask ? this.mask.value : this.value;
         },
         delay() {
             return wwLib.wwUtils.getLengthUnit(this.content.debounceDelay)[0];
@@ -266,10 +272,30 @@ export default {
         isEditing() {
             this.initIMask();
         },
+        value(newValue, oldValue) {
+            if (this.mask && newValue) {
+                // When value changes, ensure mask is properly applied
+                this.$nextTick(() => {
+                    if (this.mask.value !== this.input.value && this.input) {
+                        this.mask.value = newValue;
+                        this.input.value = this.mask.value;
+                    }
+                });
+            }
+        },
         'content.value'(newValue) {
             if (newValue === this.value) return;
             this.setValue(newValue);
-            this.setUnmaskedValue(this.mask.unmaskedValue);
+            if (this.mask) {
+                this.setUnmaskedValue(this.mask.unmaskedValue);
+                
+                // Ensure mask formatting is applied to the display value
+                this.$nextTick(() => {
+                    if (this.input) {
+                        this.input.value = this.mask.value;
+                    }
+                });
+            }
             this.$emit('trigger-event', { name: 'initValueChange', event: { value: newValue } });
         },
         isReadonly: {
@@ -343,14 +369,54 @@ export default {
             if (this.mask) this.mask.destroy();
             this.componentKey++;
             await nextTick();
-
+            
+            if (!this.input) {
+                return;
+            }
+            
             this.mask = IMask(this.input, this.maskOptions);
+            
+            // Override IMask's updateValue method to ensure the formatted value
+            // is always displayed in the input element
+            const originalUpdateValue = this.mask.updateValue.bind(this.mask);
+            this.mask.updateValue = () => {
+                originalUpdateValue();
+                
+                // Make sure input value is synchronized with mask.value
+                if (this.input && this.input.value !== this.mask.value) {
+                    this.input.value = this.mask.value;
+                }
+            };
+            
             this.mask.on('accept', event => this.handleDebounce(event, 'accept'));
             this.mask.on('complete', event => this.handleDebounce(event, 'complete'));
+            
+            // Set initial mask value if value exists
+            if (this.value) {
+                this.mask.value = this.value;
+                
+                // Force sync with input element
+                if (this.input) {
+                    this.input.value = this.mask.value;
+                }
+            }
         },
         onInputChange(event) {
             this.wasAccepted = false;
             this.wasCompleted = false;
+            
+            // Update the mask with the input value
+            if (this.mask && event.target && event.target.value !== undefined) {
+                // Store what user is typing 
+                this.mask.value = event.target.value;
+                
+                // Update component value to match what user typed
+                const newValue = this.mask.value;
+                if (newValue !== this.value) {
+                    this.setValue(newValue);
+                    this.setUnmaskedValue(this.mask.unmaskedValue);
+                }
+            }
 
             setTimeout(() => {
                 this.checkForRejection(event);
@@ -365,7 +431,9 @@ export default {
             this.wasAccepted = false;
             this.wasCompleted = false;
 
-            const newValue = event.target.value;
+            // Check if event is valid and has target property
+            const newValue = event && event.target ? event.target.value : this.mask.value;
+            
             this.setValue(newValue);
             this.setUnmaskedValue(this.mask.unmaskedValue);
 
@@ -381,18 +449,22 @@ export default {
                     clearTimeout(this.debounce);
                 }
                 this.debounce = setTimeout(() => {
-                    this.dispatchInputEvents(newValue, event, type);
+                    this.dispatchInputEvents(newValue, event || {}, type);
                     this.isDebouncing = false;
                 }, this.delay);
             } else {
-                this.dispatchInputEvents(newValue, event, type);
+                this.dispatchInputEvents(newValue, event || {}, type);
             }
         },
         onCharacterReject(event) {
-            if (event.key === 'Enter') return;
+            if (!event || event.key === 'Enter') return;
             this.$emit('trigger-event', {
                 name: 'characterReject',
-                event: { domEvent: event, value: this.value, character: event.data },
+                event: { 
+                    domEvent: event, 
+                    value: this.value, 
+                    character: event.data || null 
+                },
             });
         },
         dispatchInputEvents(value, event, type) {
@@ -404,7 +476,11 @@ export default {
             } else if (type === 'accept') {
                 this.$emit('trigger-event', {
                     name: 'characterAccept',
-                    event: { domEvent: event, value, character: event.data },
+                    event: { 
+                        domEvent: event, 
+                        value, 
+                        character: event && event.data ? event.data : null 
+                    },
                 });
                 this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
             }
@@ -443,6 +519,80 @@ export default {
                 this.noTransition = false;
             }, wwLib.wwUtils.getLengthUnit(this.content.transition)[0]);
         },
+        onMouseEnter() {
+            this.isHovered = true;
+            
+            // Check if the input value doesn't match the masked value format
+            if (this.mask && this.value) {
+                // A formatted mask value should be different than the raw value
+                // because it contains formatting characters
+                const formattedValue = this.mask.value;
+                const rawValue = this.value.toString().replace(/\s+/g, '');
+                
+                if (formattedValue.replace(/\s+/g, '') === rawValue && 
+                    formattedValue !== this.value) {
+                    
+                    // Reset the mask value to trigger proper formatting
+                    this.$nextTick(() => {
+                        // Force reapply the mask
+                        this.mask.updateValue();
+                        // Update the input value with the formatted value
+                        this.input.value = this.mask.value;
+                    });
+                }
+            }
+        },
+        
+        onMouseLeave() {
+            this.isHovered = false;
+            
+            // Ensure mask stays applied when leaving hover state
+            if (this.mask && this.value && this.input) {
+                const formattedValue = this.mask.value;
+                if (formattedValue !== this.input.value) {
+                    // Force reapply the mask
+                    this.$nextTick(() => {
+                        this.mask.updateValue();
+                        this.input.value = this.mask.value;
+                    });
+                }
+            }
+        },
+        
+        onFocus() {
+            this.isFocused = true;
+            
+            // Ensure mask is correctly applied on focus
+            if (this.mask && this.value) {
+                this.$nextTick(() => {
+                    // Make sure the formatted value is displayed
+                    const displayValue = this.mask.value;
+                    if (displayValue !== this.input.value) {
+                        this.input.value = displayValue;
+                    }
+                });
+            }
+        },
+        
+        onBlur() {
+            this.isFocused = false;
+            
+            // If typing created a new value in the input, update component value to match
+            if (this.mask && this.input) {
+                const inputValue = this.input.value;
+                
+                // Update internal value to match what the user typed
+                if (inputValue !== this.value && this.mask.masked.isComplete) {
+                    this.setValue(inputValue);
+                    this.setUnmaskedValue(this.mask.unmaskedValue);
+                    this.$emit('trigger-event', { 
+                        name: 'change', 
+                        event: { value: inputValue } 
+                    });
+                }
+            }
+        },
+        
         // /!\ Use externally
         focusInput() {
             if (this.isReadonly) return;
