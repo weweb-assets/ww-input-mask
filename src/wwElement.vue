@@ -103,8 +103,8 @@ export default {
 
         useForm(
             variableValue,
-            { fieldName, validation, customValidation, required },
-            { elementState: props.wwElementState, emit, sidepanelFormPath: 'form' }
+            { fieldName, validation, customValidation, required, initialValue: computed(() => props.content.value) },
+            { elementState: props.wwElementState, emit, sidepanelFormPath: 'form', setValue }
         );
 
         return { variableValue, setValue, setUnmaskedValue, type, input, state, createElement };
