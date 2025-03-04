@@ -99,13 +99,15 @@ export default {
         const customValidation = computed(() => props.content.customValidation);
         const required = computed(() => props.content.required);
 
+        const { createElement } = wwLib.wwElement.useCreate();
+
         useForm(
             variableValue,
             { fieldName, validation, customValidation, required },
             { elementState: props.wwElementState, emit, sidepanelFormPath: 'form' }
         );
 
-        return { variableValue, setValue, setUnmaskedValue, type, input, state };
+        return { variableValue, setValue, setUnmaskedValue, type, input, state, createElement };
     },
     data() {
         return {
@@ -332,7 +334,7 @@ export default {
                 let placeholderElement = null;
 
                 if (value) {
-                    placeholderElement = await wwLib.createElement(
+                    placeholderElement = await this.createElement(
                         'ww-text',
                         {},
                         { name: 'Placeholder' },
