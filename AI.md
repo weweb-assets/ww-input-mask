@@ -7,7 +7,7 @@ keywords: input, mask, form, pattern, validation, formatting
 #### ww-input-mask
 
 ***Purpose:***
-A specialized input component that enforces formatting patterns on user input. It inherits from ww-text and provides advanced masking capabilities using the iMask library.
+ A specialized input component that enforces formatting patterns on user input. It inherits from ww-text and provides advanced masking capabilities using the iMask library.
 
 ***Properties:***
 - pattern (string) - The mask pattern to apply (e.g. '{#}000[aaa]/NIC-'), default: '{8}000000'
