@@ -32,7 +32,7 @@ keywords: input, mask, form, pattern, validation, formatting
 - customValidation: boolean - Enable custom validation. Default: false
 - validation: Formula - Custom validation formula. Requires customValidation to be true!
 
-***Internal Variables:***
+***Exposed Variables:***
 - value (string|number) - Current masked value (Path: variables['current_element_uid-value'])
 - raw value (string|number) - Unmasked value (Path: variables['current_element_uid-raw value'])
 
