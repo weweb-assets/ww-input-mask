@@ -603,6 +603,9 @@ export default {
             if (el) el.focus();
         },
     },
+    beforeUnmount() {
+        if (this.mask) this.mask.destroy();
+    },
 };
 </script>
 
