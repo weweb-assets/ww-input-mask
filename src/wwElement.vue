@@ -287,10 +287,13 @@ export default {
         },
         'content.value'(newValue) {
             if (newValue === this.value) return;
+
             this.setValue(newValue);
+
             if (this.mask) {
+                this.mask.value = newValue;
                 this.setUnmaskedValue(this.mask.unmaskedValue);
-                
+
                 // Ensure mask formatting is applied to the display value
                 this.$nextTick(() => {
                     if (this.input) {
@@ -371,32 +374,32 @@ export default {
             if (this.mask) this.mask.destroy();
             this.componentKey++;
             await nextTick();
-            
+
             if (!this.input) {
                 return;
             }
-            
+
             this.mask = IMask(this.input, this.maskOptions);
-            
+
             // Override IMask's updateValue method to ensure the formatted value
             // is always displayed in the input element
             const originalUpdateValue = this.mask.updateValue.bind(this.mask);
             this.mask.updateValue = () => {
                 originalUpdateValue();
-                
+
                 // Make sure input value is synchronized with mask.value
                 if (this.input && this.input.value !== this.mask.value) {
                     this.input.value = this.mask.value;
                 }
             };
-            
+
             this.mask.on('accept', event => this.handleDebounce(event, 'accept'));
             this.mask.on('complete', event => this.handleDebounce(event, 'complete'));
-            
+
             // Set initial mask value if value exists
             if (this.value) {
                 this.mask.value = this.value;
-                
+
                 // Force sync with input element
                 if (this.input) {
                     this.input.value = this.mask.value;
@@ -406,12 +409,12 @@ export default {
         onInputChange(event) {
             this.wasAccepted = false;
             this.wasCompleted = false;
-            
+
             // Update the mask with the input value
             if (this.mask && event.target && event.target.value !== undefined) {
-                // Store what user is typing 
+                // Store what user is typing
                 this.mask.value = event.target.value;
-                
+
                 // Update component value to match what user typed
                 const newValue = this.mask.value;
                 if (newValue !== this.value) {
@@ -435,7 +438,7 @@ export default {
 
             // Check if event is valid and has target property
             const newValue = event && event.target ? event.target.value : this.mask.value;
-            
+
             this.setValue(newValue);
             this.setUnmaskedValue(this.mask.unmaskedValue);
 
@@ -462,10 +465,10 @@ export default {
             if (!event || event.key === 'Enter') return;
             this.$emit('trigger-event', {
                 name: 'characterReject',
-                event: { 
-                    domEvent: event, 
-                    value: this.value, 
-                    character: event.data || null 
+                event: {
+                    domEvent: event,
+                    value: this.value,
+                    character: event.data || null,
                 },
             });
         },
@@ -478,10 +481,10 @@ export default {
             } else if (type === 'accept') {
                 this.$emit('trigger-event', {
                     name: 'characterAccept',
-                    event: { 
-                        domEvent: event, 
-                        value, 
-                        character: event && event.data ? event.data : null 
+                    event: {
+                        domEvent: event,
+                        value,
+                        character: event && event.data ? event.data : null,
                     },
                 });
                 this.$emit('trigger-event', { name: 'change', event: { domEvent: event, value } });
@@ -523,17 +526,15 @@ export default {
         },
         onMouseEnter() {
             this.isHovered = true;
-            
+
             // Check if the input value doesn't match the masked value format
             if (this.mask && this.value) {
                 // A formatted mask value should be different than the raw value
                 // because it contains formatting characters
                 const formattedValue = this.mask.value;
                 const rawValue = this.value.toString().replace(/\s+/g, '');
-                
-                if (formattedValue.replace(/\s+/g, '') === rawValue && 
-                    formattedValue !== this.value) {
-                    
+
+                if (formattedValue.replace(/\s+/g, '') === rawValue && formattedValue !== this.value) {
                     // Reset the mask value to trigger proper formatting
                     this.$nextTick(() => {
                         // Force reapply the mask
@@ -544,10 +545,10 @@ export default {
                 }
             }
         },
-        
+
         onMouseLeave() {
             this.isHovered = false;
-            
+
             // Ensure mask stays applied when leaving hover state
             if (this.mask && this.value && this.input) {
                 const formattedValue = this.mask.value;
@@ -560,10 +561,10 @@ export default {
                 }
             }
         },
-        
+
         onFocus() {
             this.isFocused = true;
-            
+
             // Ensure mask is correctly applied on focus
             if (this.mask && this.value) {
                 this.$nextTick(() => {
@@ -575,26 +576,26 @@ export default {
                 });
             }
         },
-        
+
         onBlur() {
             this.isFocused = false;
-            
+
             // If typing created a new value in the input, update component value to match
             if (this.mask && this.input) {
                 const inputValue = this.input.value;
-                
+
                 // Update internal value to match what the user typed
                 if (inputValue !== this.value && this.mask.masked.isComplete) {
                     this.setValue(inputValue);
                     this.setUnmaskedValue(this.mask.unmaskedValue);
-                    this.$emit('trigger-event', { 
-                        name: 'change', 
-                        event: { value: inputValue } 
+                    this.$emit('trigger-event', {
+                        name: 'change',
+                        event: { value: inputValue },
                     });
                 }
             }
         },
-        
+
         // /!\ Use externally
         focusInput() {
             if (this.isReadonly) return;
