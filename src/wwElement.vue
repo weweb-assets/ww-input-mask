@@ -275,11 +275,12 @@ export default {
             this.initIMask();
         },
         value(newValue, oldValue) {
-            if (this.mask && newValue) {
+            if (this.mask && newValue !== undefined && newValue !== null) {
                 // When value changes, ensure mask is properly applied
                 this.$nextTick(() => {
                     if (this.mask.value !== this.input.value && this.input) {
-                        this.mask.value = newValue;
+                        // Convert to string to ensure IMask receives the correct type
+                        this.mask.value = String(newValue);
                         this.input.value = this.mask.value;
                     }
                 });
@@ -291,7 +292,8 @@ export default {
             this.setValue(newValue);
 
             if (this.mask) {
-                this.mask.value = newValue;
+                // Convert newValue to string to ensure IMask receives the correct type
+                this.mask.value = newValue !== null && newValue !== undefined ? String(newValue) : '';
                 this.setUnmaskedValue(this.mask.unmaskedValue);
 
                 // Ensure mask formatting is applied to the display value
@@ -397,8 +399,9 @@ export default {
             this.mask.on('complete', event => this.handleDebounce(event, 'complete'));
 
             // Set initial mask value if value exists
-            if (this.value) {
-                this.mask.value = this.value;
+            if (this.value !== undefined && this.value !== null) {
+                // Convert to string to ensure IMask receives the correct type
+                this.mask.value = String(this.value);
 
                 // Force sync with input element
                 if (this.input) {
