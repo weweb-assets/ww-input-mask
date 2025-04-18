@@ -139,7 +139,10 @@ export default {
             return this.variableValue;
         },
         formattedValue() {
-            return this.mask ? this.mask.value : this.value;
+            if (this.mask) {
+                return this.mask.value;
+            }
+            return this.value !== undefined && this.value !== null ? String(this.value) : '';
         },
         delay() {
             return wwLib.wwUtils.getLengthUnit(this.content.debounceDelay)[0];
@@ -278,12 +281,21 @@ export default {
             if (this.mask && newValue !== undefined && newValue !== null) {
                 // When value changes, ensure mask is properly applied
                 this.$nextTick(() => {
-                    if (this.mask.value !== this.input.value && this.input) {
-                        // Convert to string to ensure IMask receives the correct type
-                        this.mask.value = String(newValue);
+                    // Convert to string to ensure IMask receives the correct type
+                    const stringValue = String(newValue);
+                    if (this.mask.value !== stringValue) {
+                        this.mask.value = stringValue;
+                    }
+                    if (this.input && this.input.value !== this.mask.value) {
                         this.input.value = this.mask.value;
                     }
                 });
+            } else if (this.mask) {
+                // Handle null/undefined values
+                this.mask.value = '';
+                if (this.input) {
+                    this.input.value = '';
+                }
             }
         },
         'content.value'(newValue) {
@@ -293,12 +305,15 @@ export default {
 
             if (this.mask) {
                 // Convert newValue to string to ensure IMask receives the correct type
-                this.mask.value = newValue !== null && newValue !== undefined ? String(newValue) : '';
+                const stringValue = newValue !== null && newValue !== undefined ? String(newValue) : '';
+                if (this.mask.value !== stringValue) {
+                    this.mask.value = stringValue;
+                }
                 this.setUnmaskedValue(this.mask.unmaskedValue);
 
                 // Ensure mask formatting is applied to the display value
                 this.$nextTick(() => {
-                    if (this.input) {
+                    if (this.input && this.input.value !== this.mask.value) {
                         this.input.value = this.mask.value;
                     }
                 });
@@ -401,12 +416,23 @@ export default {
             // Set initial mask value if value exists
             if (this.value !== undefined && this.value !== null) {
                 // Convert to string to ensure IMask receives the correct type
-                this.mask.value = String(this.value);
+                const stringValue = String(this.value);
+                this.mask.value = stringValue;
 
                 // Force sync with input element
                 if (this.input) {
                     this.input.value = this.mask.value;
                 }
+                
+                // Update masked and unmasked values
+                this.setUnmaskedValue(this.mask.unmaskedValue);
+            } else {
+                // Handle null/undefined values
+                this.mask.value = '';
+                if (this.input) {
+                    this.input.value = '';
+                }
+                this.setUnmaskedValue('');
             }
         },
         onInputChange(event) {
