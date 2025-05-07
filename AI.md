@@ -38,6 +38,8 @@ Events:
 - characterAccept - Triggered when a character is accepted by the mask
 - characterReject - Triggered when a character is rejected by the mask
 - maskComplete - Triggered when the mask pattern is completely filled
+- focus - Triggered when input is focused
+- blur - Triggered when input is blurred
 
 Variables:
 - value (string|number) - Current masked value
