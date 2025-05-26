@@ -593,6 +593,8 @@ export default {
 
         onFocus() {
             this.isFocused = true;
+            this.$emit('trigger-event', { name: 'focus', event: null });
+            this.$emit('add-state', 'focus');
 
             // Ensure mask is correctly applied on focus
             if (this.mask && this.value) {
@@ -608,6 +610,8 @@ export default {
 
         onBlur() {
             this.isFocused = false;
+            this.$emit('trigger-event', { name: 'blur', event: null });
+            this.$emit('remove-state', 'focus');
 
             // If typing created a new value in the input, update component value to match
             if (this.mask && this.input) {

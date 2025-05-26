@@ -31,6 +31,7 @@ export default {
             ],
         ],
     },
+    states: ['focus', 'readonly'],
     triggerEvents: [
         { name: 'change', label: { en: 'On change' }, event: { value: '' } },
         { name: 'initValueChange', label: { en: 'On init value change' }, event: { value: '' } },
@@ -43,6 +44,8 @@ export default {
             default: true,
         },
         { name: 'maskComplete', label: { en: 'On mask completed' }, event: { value: '' } },
+        { name: 'focus', label: { en: 'On focus' }, event: null },
+        { name: 'blur', label: { en: 'On blur' }, event: null },
     ],
     properties: {
         placeholderColor: {

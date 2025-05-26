@@ -43,3 +43,5 @@ keywords: input, mask, form, pattern, validation, formatting
 - characterAccept - Triggered when a character is accepted by the mask. Payload: {"value":"current_value"}
 - characterReject - Triggered when a character is rejected by the mask. Payload: {"value":"current_value","character":"a"}
 - maskComplete - Triggered when the mask pattern is completely filled. Payload: {"value":"current_value"}
+- focus - Triggered when input is focused
+- blur - Triggered when input is blurred
