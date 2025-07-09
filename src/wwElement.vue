@@ -67,6 +67,7 @@ export default {
     },
     emits: ['trigger-event', 'add-state', 'remove-state', 'update:content:effect'],
     setup(props, { emit }) {
+
         const type = computed(() => {
             if (Object.keys(props.wwElementState.props).includes('type')) {
                 return props.wwElementState.props.type;
