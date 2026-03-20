@@ -33,19 +33,20 @@ export default {
     },
     states: ['focus', 'readonly'],
     triggerEvents: [
-        { name: 'change', label: { en: 'On change' }, event: { value: '' } },
-        { name: 'initValueChange', label: { en: 'On init value change' }, event: { value: '' } },
-        { name: 'onEnterKey', label: { en: 'On enter key' }, event: { value: '' } },
-        { name: 'characterAccept', label: { en: 'On character accepted' }, event: { value: '', character: '' } },
+        { name: 'change', label: { en: 'On change' }, event: { value: '' }, description: "Run when the value changes." },
+        { name: 'initValueChange', label: { en: 'On init value change' }, event: { value: '' }, description: "Run when the initial value changes." },
+        { name: 'onEnterKey', label: { en: 'On enter key' }, event: { value: '' }, description: "Run when the Enter key is pressed." },
+        { name: 'characterAccept', label: { en: 'On character accepted' }, event: { value: '', character: '' }, description: "Run when a typed character is accepted by the mask." },
         {
             name: 'characterReject',
             label: { en: 'On character rejected' },
             event: { value: '', character: '' },
             default: true,
+            description: "Run when a typed character is rejected by the mask.",
         },
-        { name: 'maskComplete', label: { en: 'On mask completed' }, event: { value: '' } },
-        { name: 'focus', label: { en: 'On focus' }, event: null },
-        { name: 'blur', label: { en: 'On blur' }, event: null },
+        { name: 'maskComplete', label: { en: 'On mask completed' }, event: { value: '' }, description: "Run when all required mask characters are filled." },
+        { name: 'focus', label: { en: 'On focus' }, event: null, description: "Run when the input becomes active (for example, when clicked)." },
+        { name: 'blur', label: { en: 'On blur' }, event: null, description: "Run when the input stops being active." },
     ],
     properties: {
         placeholderColor: {
