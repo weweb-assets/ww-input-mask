@@ -33,7 +33,7 @@ export default {
     },
     states: ['focus', 'readonly'],
     triggerEvents: [
-        { name: 'change', label: { en: 'On change' }, event: { value: '' }, description: "Run when the value changes." },
+        { name: 'change', label: { en: 'On change' }, event: { value: '' }, description: "Run when the user types in the input." },
         { name: 'initValueChange', label: { en: 'On init value change' }, event: { value: '' }, description: "Run when the initial value changes." },
         { name: 'onEnterKey', label: { en: 'On enter key' }, event: { value: '' }, description: "Run when the Enter key is pressed." },
         { name: 'characterAccept', label: { en: 'On character accepted' }, event: { value: '', character: '' }, description: "Run when a typed character is accepted by the mask." },
