@@ -6,9 +6,10 @@ export default {
         exclude: ['text'],
     },
     css({ content }) {
-        if (!content.placeholderColor) return [];
+        const placeholderColor = content.placeholderColor;
+        if (placeholderColor === undefined || placeholderColor === null || placeholderColor === '') return [];
 
-        return [{ property: '--placeholder-color', value: content.placeholderColor }];
+        return [{ property: '--placeholder-color', value: placeholderColor }];
     },
     editor: {
         label: { en: 'Mask Input' },
