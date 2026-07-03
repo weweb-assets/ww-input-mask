@@ -5,6 +5,11 @@ export default {
         type: 'ww-text',
         exclude: ['text'],
     },
+    css({ content }) {
+        if (!content.placeholderColor) return [];
+
+        return [{ property: '--placeholder-color', value: content.placeholderColor }];
+    },
     editor: {
         label: { en: 'Mask Input' },
         icon: 'text-input',
