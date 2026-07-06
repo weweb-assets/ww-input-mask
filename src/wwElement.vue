@@ -210,17 +210,12 @@ export default {
             };
         },
         style() {
-            const style = {
-                ...wwLib.wwUtils.getTextStyleFromContent(this.content),
-                '--placeholder-color': this.content.placeholderColor,
-            };
-            delete style['whiteSpaceCollapse']; //Create a visual bug in Firefox
-            delete style['whiteSpace']; //Create a visual bug in Firefox
-            INPUT_STYLE_PROPERTIES.forEach(property => {
+            const style = {};
+            for (const property of INPUT_STYLE_PROPERTIES) {
                 if (this.$attrs?.style?.[property]) {
                     style[property] = this.$attrs?.style?.[property];
                 }
-            });
+            }
 
             return style;
         },
@@ -663,6 +658,20 @@ export default {
         border: none;
         background-color: inherit;
         border-radius: inherit;
+        color: inherit;
+        font: inherit;
+        letter-spacing: inherit;
+        line-height: inherit;
+        overflow: var(--ww-text-overflow, initial);
+        text-align: inherit;
+        text-decoration: inherit;
+        text-decoration-color: inherit;
+        text-decoration-style: inherit;
+        text-overflow: var(--ww-text-text-overflow, initial);
+        text-shadow: inherit;
+        text-transform: inherit;
+        white-space: var(--ww-text-white-space, initial);
+        word-spacing: inherit;
 
         &::placeholder {
             color: var(--placeholder-color, #000000ad);
