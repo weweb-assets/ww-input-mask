@@ -1,12 +1,12 @@
 <template>
-    <div class="ww-input-basic" :class="{ editing: isEditing }" v-bind="rootBinding">
+    <div class="ww-input-basic" :class="[componentClasses.root, { editing: isEditing }]" v-bind="rootBinding">
         <input
             ref="input"
             :key="componentKey"
             :id="$attrs.id"
             :value="formattedValue"
             class="ww-input-basic__input"
-            :class="$attrs.class"
+            :class="componentClasses.input"
             v-bind="inputBinding"
             type="text"
             :name="wwElementState.name"
@@ -54,6 +54,26 @@ const INPUT_STYLE_PROPERTIES = [
     'cursor',
 ];
 
+function normalizeClasses(value) {
+    if (typeof value === 'string') return value.split(/\s+/).filter(Boolean);
+    if (Array.isArray(value)) return value.flatMap(normalizeClasses);
+    if (!value || typeof value !== 'object') return [];
+
+    const classes = [];
+    for (const className in value) {
+        if (Object.hasOwn(value, className) && value[className]) classes.push(className);
+    }
+    return classes;
+}
+
+function isElementRootClass(className) {
+    return (
+        className === 'ww-element' ||
+        className.startsWith('ww-element-') ||
+        /^ww-(?:flexbox|grid|layout)__object$/.test(className)
+    );
+}
+
 export default {
     inheritAttrs: false,
     props: {
@@ -65,9 +85,8 @@ export default {
         uid: { type: String, required: true },
         wwElementState: { type: Object, required: true },
     },
-    emits: ['trigger-event', 'add-state', 'remove-state', 'update:content:effect'],
+    emits: ['trigger-event', 'update:content:effect'],
     setup(props, { emit }) {
-
         const type = computed(() => {
             if (Object.keys(props.wwElementState.props).includes('type')) {
                 return props.wwElementState.props.type;
@@ -148,6 +167,13 @@ export default {
         delay() {
             return wwLib.wwUtils.getLengthUnit(this.content.debounceDelay)[0];
         },
+        componentClasses() {
+            const classes = { root: [], input: [] };
+            for (const className of normalizeClasses(this.$attrs.class)) {
+                classes[isElementRootClass(className) ? 'root' : 'input'].push(className);
+            }
+            return classes;
+        },
         rootBinding() {
             const style = { ...(this.$attrs.style || {}) };
             INPUT_STYLE_PROPERTIES.forEach(property => {
@@ -210,17 +236,12 @@ export default {
             };
         },
         style() {
-            const style = {
-                ...wwLib.wwUtils.getTextStyleFromContent(this.content),
-                '--placeholder-color': this.content.placeholderColor,
-            };
-            delete style['whiteSpaceCollapse']; //Create a visual bug in Firefox
-            delete style['whiteSpace']; //Create a visual bug in Firefox
-            INPUT_STYLE_PROPERTIES.forEach(property => {
+            const style = {};
+            for (const property of INPUT_STYLE_PROPERTIES) {
                 if (this.$attrs?.style?.[property]) {
                     style[property] = this.$attrs?.style?.[property];
                 }
-            });
+            }
 
             return style;
         },
@@ -323,13 +344,7 @@ export default {
         },
         isReadonly: {
             immediate: true,
-            handler(value) {
-                if (value) {
-                    this.$emit('add-state', 'readonly');
-                } else {
-                    this.$emit('remove-state', 'readonly');
-                }
-
+            handler() {
                 this.$nextTick(() => {
                     this.handleObserver();
                 });
@@ -424,7 +439,7 @@ export default {
                 if (this.input) {
                     this.input.value = this.mask.value;
                 }
-                
+
                 // Update masked and unmasked values
                 this.setUnmaskedValue(this.mask.unmaskedValue);
             } else {
@@ -546,9 +561,19 @@ export default {
             if (!el || !placeholder || this.isReadonly) return;
             this.noTransition = true;
 
-            const pos = el.clientHeight / 2 - placeholder.clientHeight / 2;
-            this.placeholderPosition.top = pos + 'px';
-            this.placeholderPosition.left = el.style.paddingLeft;
+            // The legacy renderer sends visual styles inline and the CSS renderer applies them to
+            // the component root. Read the box that owns the styles so both runtimes stay aligned.
+            const hasInlineInputStyle = INPUT_STYLE_PROPERTIES.some(property => this.$attrs.style?.[property]);
+            const styleElement = hasInlineInputStyle ? el : el.parentElement;
+            const computedStyle = window.getComputedStyle(styleElement);
+            const paddingTop = parseFloat(computedStyle.paddingTop);
+            const paddingBottom = parseFloat(computedStyle.paddingBottom);
+            const paddingLeft = parseFloat(computedStyle.paddingLeft);
+            const availableHeight = styleElement.clientHeight - paddingTop - paddingBottom;
+            const top = paddingTop + Math.max(0, availableHeight - placeholder.clientHeight) / 2;
+
+            this.placeholderPosition.top = `${top}px`;
+            this.placeholderPosition.left = `${paddingLeft}px`;
 
             setTimeout(() => {
                 this.noTransition = false;
@@ -595,7 +620,6 @@ export default {
         onFocus() {
             this.isFocused = true;
             this.$emit('trigger-event', { name: 'focus', event: null });
-            this.$emit('add-state', 'focus');
 
             // Ensure mask is correctly applied on focus
             if (this.mask && this.value) {
@@ -612,7 +636,6 @@ export default {
         onBlur() {
             this.isFocused = false;
             this.$emit('trigger-event', { name: 'blur', event: null });
-            this.$emit('remove-state', 'focus');
 
             // If typing created a new value in the input, update component value to match
             if (this.mask && this.input) {
@@ -657,12 +680,29 @@ export default {
     /* wwEditor:end */
 
     &__input {
+        display: block;
         width: 100%;
+        min-width: 0;
         height: 100%;
+        padding: 0;
         outline: none;
         border: none;
         background-color: inherit;
         border-radius: inherit;
+        color: inherit;
+        font: inherit;
+        letter-spacing: inherit;
+        line-height: inherit;
+        overflow: var(--ww-text-overflow, initial);
+        text-align: inherit;
+        text-decoration: inherit;
+        text-decoration-color: inherit;
+        text-decoration-style: inherit;
+        text-overflow: var(--ww-text-text-overflow, initial);
+        text-shadow: inherit;
+        text-transform: inherit;
+        white-space: var(--ww-text-white-space, initial);
+        word-spacing: inherit;
 
         &::placeholder {
             color: var(--placeholder-color, #000000ad);

@@ -5,6 +5,11 @@ export default {
         type: 'ww-text',
         exclude: ['text'],
     },
+    css({ content }) {
+        if (!content.placeholderColor) return [];
+
+        return [{ property: '--placeholder-color', value: content.placeholderColor }];
+    },
     editor: {
         label: { en: 'Mask Input' },
         icon: 'text-input',
@@ -31,7 +36,10 @@ export default {
             ],
         ],
     },
-    states: ['focus', 'readonly'],
+    states: [
+        { label: 'focus', selector: '&:focus-within' },
+        { label: 'readonly', selector: '&:has(:read-only)' },
+    ],
     triggerEvents: [
         { name: 'change', label: { en: 'On change' }, event: { value: '' } },
         { name: 'initValueChange', label: { en: 'On init value change' }, event: { value: '' } },
