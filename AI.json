@@ -29,7 +29,7 @@
     "properties": [
         {
             "name": "placeholderColor",
-            "description": "Color of the placeholder text. Inactive when advancedPlaceholder is true.",
+            "description": "Color of the placeholder text. This is the ONLY way to color the placeholder: it is applied to the input's native ::placeholder through a CSS variable and cannot be changed with external CSS or a ::placeholder selector. Supports per-state values (e.g. a different color on the focus state). Only affects the native placeholder, so it is inactive/ignored when advancedPlaceholder is true.",
             "type": "string",
             "defaultValue": "#000000ad",
             "responsive": true,
@@ -365,8 +365,24 @@
         "Debounce delays the change event firing. Set debounce to true and debounceDelay to the desired delay (e.g. '500ms').",
         "Use debounce with debounceDelay for auto-saving, searching scenarios or when the 'change' workflow performs expensive work (API calls, heavy computations) to avoid firing on every changes.",
         "The type property selects the underlying HTML input mode and gates rows / resize (textarea) and min / max / hideArrows (number).",
-        "The pattern property uses iMask syntax. Common examples: US phone '{+1} (000) 000-0000', date '00/00/0000', credit card '0000 0000 0000 0000', postal code (US) '00000', postal code (CA) 'a0a 0a0'."
+        "The pattern property uses iMask syntax. Common examples: US phone '{+1} (000) 000-0000', date '00/00/0000', credit card '0000 0000 0000 0000', postal code (US) '00000', postal code (CA) 'a0a 0a0'.",
+        "To color the placeholder text, set the placeholderColor property. It is applied to the native ::placeholder via a CSS variable and cannot be set with external CSS or a ::placeholder rule. It also supports per-state values (e.g. set a different placeholderColor on the focus state).",
+        "placeholderColor only styles the native placeholder. When advancedPlaceholder is true the native placeholder is replaced by a separate animated floating label and placeholderColor has no effect. For a simple colored placeholder, keep advancedPlaceholder off (the default) and set placeholderColor.",
+        "This is a real masked input. To format user input (phone, date, credit card, postal code, etc.), generate a ww-input-mask with the right pattern. Do NOT use a plain ww-input-basic plus an on-change workflow to force the format."
     ],
-    "examples": [],
+    "examples": [
+        {
+            "description": "US phone number field inside a form. The pattern enforces the format; placeholderColor sets the placeholder text color.",
+            "example": "{\"uid\":\"input-mask-phone\",\"tag\":\"ww-input-mask\",\"name\":\"Phone Input\",\"content\":{\"default\":{\"pattern\":\"{+1} (000) 000-0000\",\"type\":\"tel\",\"fieldName\":\"phone\",\"required\":true,\"placeholder\":{\"en\":\"(555) 000-0000\"},\"placeholderColor\":\"#9CA3AF\"}}}"
+        },
+        {
+            "description": "Date field enforcing a DD/MM/YYYY format.",
+            "example": "{\"uid\":\"input-mask-date\",\"tag\":\"ww-input-mask\",\"name\":\"Date Input\",\"content\":{\"default\":{\"pattern\":\"00/00/0000\",\"fieldName\":\"birthdate\",\"placeholder\":{\"en\":\"DD/MM/YYYY\"}}}}"
+        },
+        {
+            "description": "Credit card number field grouped in blocks of four digits.",
+            "example": "{\"uid\":\"input-mask-card\",\"tag\":\"ww-input-mask\",\"name\":\"Card Number\",\"content\":{\"default\":{\"pattern\":\"0000 0000 0000 0000\",\"fieldName\":\"cardNumber\",\"placeholder\":{\"en\":\"0000 0000 0000 0000\"}}}}"
+        }
+    ],
     "dependencies": []
 }
